@@ -84,6 +84,34 @@ def pre2par_varp( pre, delta):
     phi = VQ2par(v, q)
     return phi
 
+par2pre_varp <-function(phi){
+  m = dim(phi)[1]
+  pre <- rep(0, m^2)
+  U = matrix(solve((diag(m^2) - phi%x%phi),as.vector(diag(m)),tol=1e-40),m,m)
+  # v = U - diag(m)
+  v = U - diag(m)*0.9
+  q = solve(sqrtm(v))%*%phi%*%sqrtm(U)
+  pre[1:choose(m+1,2)] = V2LDL(v)
+  delta = sign(det(q))
+  s = 2*solve(diag(m) + diag(c(delta,rep(1,(m-1))))%*%q) - diag(m)
+  pre[(choose(m+1,2)+1):m^2] = s[lower.tri(s)]
+  return(list(pre=pre,delta=delta,U=U))
+}
+
+def par2pre_varp(phi):
+  m = phi.shape[0]
+  pre = np.zeros(m**2)
+  U = la.solve(np.eye(m**2) - np.kron(phi, phi),np.eye(m).reshape((-1, 1), order="F")).reshape((m, m))
+  # v = U - diag(m)
+  v = U - np.eye(m)*0.9
+  q = la.inv(sqrtm(v)).dot(phi.dot(sqrtm(U)))
+  pre[:binom(m+1,2)] = V2LDL(v)
+  delta, _ = la.slogdet(q)
+  s = 2*la.inv(np.eye(m) + diag(np.r_[delta, np.ones(m-1)])).dot(q) - np.eye(m)
+  pre[choose(m+1,2):m**2] = s[np.tril_indices(m)]
+  return {"pre": pre, "delta": delta, "U": U}
+}
+
 # # use v, q transform phi
 # VQ2par <- function(v,q){
 #   m = dim(v)[1]
