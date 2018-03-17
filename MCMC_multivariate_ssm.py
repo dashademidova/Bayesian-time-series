@@ -20,7 +20,7 @@
 ##              Q ~ N(0, bdiag(sigma.U, sigma.V, sigma.W))    ##
 ################################################################
 
-#' @param test.dataset: T by n dataset with time period T, number of datasets
+#' @param test_dataset: T by n dataset with time period T, number of datasets
 #'         n
 #' @param causal.period: Period of dataset has causal impact
 #' @param nseasons: seasonality input for analysis
@@ -31,12 +31,13 @@
 #' @param graph.structural: if graph is TRUE, specify graphic structure 
 #'        matrix
 import numpy as np
+import numpy.linalg as la
 import scipy
 import scipy.stats
 from scipy.stats import wishart
 import scipy.linalg as sla
 
-def MCMC.multivariate.ssm(test_data, causal_period, nseasons=12, iterloop = 1000, 
+def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000, 
                           burnin=100, stationary=True, graph=False, graph_structureNone):
 
     
@@ -76,7 +77,7 @@ def MCMC.multivariate.ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     B = np.eye(d) # prior for sigma
     # give right parameters t0 wishart
     sigma_hat_inv = wishart(adj.g = graph.structure, b = d+1, 
-                            D = 0.1^2 * d * diag(d))[,,1]
+                            D = 0.1^2 * d * np.eye(d))[,,1]
 
     # what's happening here
     sigma_hat = chol2inv(sigma_hat_inv)
@@ -89,7 +90,7 @@ def MCMC.multivariate.ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     # take initial variance of tau from the data
     if stationary:
         # find python library with autoregressive models
-        data_yw = ar.yw(as.matrix(test.data[causal.period, ]), 
+        data_yw = ar.yw(as.matrix(test_data[causal.period, ]), 
                        aic = FALSE, order.max = 1,
                        demean = T, intercept = T)
         data_phi = np.hstack(data.yw$ar).reshape(d, d)
@@ -111,19 +112,19 @@ def MCMC.multivariate.ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     k1, k2, k3 = 0.1, 0.1, 0.1
     # what's happening here
     if not graph:
-      sigmaU <- chol2inv(rWishart(1, d+1, k1^2 * d * diag(d))[,,1])
-      sigmaV.inv <- rWishart(1, d+1, k2^2 * d * diag(d))[,,1]
-      sigmaV <- chol2inv(sigmaV.inv)
-      sigmaW <- chol2inv(rWishart(1, d+1, k3^2 * d * diag(d))[,,1])
-    } else {
-      sigmaU <- chol2inv(rgwish(adj.g = graph.structure,
-                                b = d+1, D = k1^2 * d * diag(d))[,,1])
-      sigmaV.inv <- rgwish(adj.g = graph.structure,
-                           b = d+1, D = k2^2 * d * diag(d))[,,1]
-      sigmaV <- chol2inv(sigmaV.inv)
-      sigmaW <- chol2inv(rgwish(adj.g = graph.structure,
-                                b = d+1, D = k3^2 * d * diag(d))[,,1])
-    }
+        sigmaU = chol2inv(rWishart(1, d+1, k1^2 * d * np.eye(d))[,,1])
+        sigmaV_inv = rWishart(1, d+1, k2^2 * d * np.eye(d))[,,1]
+        sigmaV = chol2inv(sigmaV_inv)
+        sigmaW = chol2inv(rWishart(1, d+1, k3^2 * d * np.eye(d))[,,1])
+    else:
+        sigmaU = chol2inv(rgwish(adj.g = graph.structure,
+                                b = d+1, D = k1^2 * d * np.eye(d))[,,1])
+        sigmaV_inv = rgwish(adj.g = graph.structure,
+                           b = d+1, D = k2^2 * d * np.eye(d))[,,1]
+        sigmaV = chol2inv(sigmaV_inv)
+        sigmaW = chol2inv(rgwish(adj.g = graph.structure,
+                                b = d+1, D = k3^2 * d * np.eye(d))[,,1])
+
     Q = sla.block_diag(sigmaU, sigmaV, sigmaW)
     
     ################### Prepare for MCMC Sampling ##################
@@ -144,10 +145,10 @@ def MCMC.multivariate.ssm(test_data, causal_period, nseasons=12, iterloop = 1000
         Theta_sample = np.empty((d, d, iterloop))
         D_sample = np.zeros((d, iterloop))
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! I stop here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # pb  <- txtProgressBar(1, iterloop, style=3)    # report progress
+    # pb  = txtProgressBar(1, iterloop, style=3)    # report progress
     print("\nStarting MCMC sampling: \n")     # report progress
     ##################### Begin MCMC Sampling #######################
-    # ptm <- proc.time()
+    # ptm = proc.time()
     for itery in range(iterloop):
       
       # report progress
@@ -156,153 +157,154 @@ def MCMC.multivariate.ssm(test_data, causal_period, nseasons=12, iterloop = 1000
       ## --------------------------------------- ##
       ## Step 1. obtain draws of alpha, apply Koopman's filter (2002)
       # simulate w.hat, y.hat, alpha.hat for Koopman's filter (2002)
-      alpha_plus <- Matrix(0, length, n)
-      for (t in 1:length) {
-        eta <- mvrnorm(1, mu = rep(0, 3*d), Q)
-        if (t == 1) {
-          alpha.plus[t, ] <- mu.ss + trans %*% alpha.int + R %*% eta
-        }
-        else {
-          alpha.plus[t, ] <- mu.ss + trans %*% alpha.plus[t-1, ] + R %*% eta
-        }
-      }
-      test.est.plus <- alpha.plus %*% z + 
-        mvrnorm(n = length, mu = rep(0, d), Sigma = sigma.hat)
-      test.est.star <- test.data - test.est.plus 
+        alpha_plus = np.zeros((length, n))
+        for t in range(length):
+            eta = mvrnorm(1, mu = rep(0, 3*d), Q)
+            if t == 0:
+                alpha_plus[t, :] = mu_ss + trans.dot(alpha) + R.dot(eta)
+
+            else:
+                alpha_plus[t, :] = mu_ss + trans.dot(alpha_plus[t-1, :]) + R.dot(eta)
+
+        test_est_plus = alpha_plus.dot(z) + mvrnorm(n = length, mu = rep(0, d), Sigma = sigma_hat)
+        test_est_star = test_data - test_est_plus 
       # Estimate alpha parameters
-      sample.alpha.draws <- 
-        koopmanfilter(n, test.est.star, trans, z, aStar.int, 2*P.int, 
-                      2*sigma.hat, 2*Q, R, causal.period)
-      alpha.star.hat <- sample.alpha.draws$alpha.sample
-      alpha.draws <- alpha.star.hat + alpha.plus
+        sample_alpha_draws = koopmanfilter(n, test_est_star, trans, z, aStar, 2*P,
+                                           2*sigma_hat, 2*Q, R, causal_period)
+        alpha_star_hat = sample_alpha_draws["alpha sample"]
+        alpha_draws = alpha_star_hat + alpha_plus
       
       # collect a.last and P.last, 
       # use them for starting point of koopman filter for causal period dataset
-      a.last.sample[, iter] <- as.vector(sample.alpha.draws$a.last)
-      P.last.sample[, , iter] <- as.matrix(sample.alpha.draws$P.last)
+        a_last_sample[:, iter] = sample_alpha_draws["a last"]
+        P_last_sample[:, :, iter] = sample_alpha_draws["P last"]
       
       ## ---------------------------------------- ##
       ## Step 2: make stationary restriction
-      if (stationary == TRUE) {
-        alpha.draws.tau <- alpha.draws[1:length.non.causal, (d+1):(d*2)]
-        if (iter == 1){
-          alpha.draws.tau.demean <- alpha.draws.tau
-          Theta.draw <- stationaryRestrict(as.matrix(alpha.draws.tau.demean),
-                                           sigmaV, sigmaV.inv)
-        } else{
-          alpha.draws.tau.demean <- t(t(alpha.draws.tau) - D.draw)
-          Theta.draw <- stationaryRestrict(as.matrix(alpha.draws.tau.demean),
-                                           sigmaV.draws, sigmaV.inv)
-        }
-        trans[(d+1):(2*d), (d+1):(2*d)] <- Theta.draw
+        if stationary:
+            alpha_draws_tau = alpha_draws[:length_non_causal, d:d*2]
+            if itery == 0:
+                alpha_draws_tau_demean = alpha_draws_tau
+                Theta_draw = stationaryRestrict(alpha_draws_tau_demean, sigmaV, sigmaV_inv)
+            else:
+                alpha_draws_tau_demean = (alpha_draws_tau.T - D_draw).T
+                Theta_draw = stationaryRestrict(alpha_draws_tau_demean, sigmaV_draws, sigmaV_inv)
+            trans[d:2*d, d:2*d] = Theta_draw
         
         ## ---------------------------------------- ##
         ## Step 3: sample intercept mu.D, denote N(0, I) prior for D
-        tau.part.A <- alpha.draws.tau[2:length.non.causal, ] -
-          alpha.draws.tau[1:(length.non.causal-1), ] %*% t(Theta.draw)
-        tau.part.B <- diag(d) - Theta.draw
-        D.var <- solve(
-          (length.non.causal-1)*crossprod(tau.part.B, sigmaV.inv) %*% tau.part.B + 
-            diag(d))
-        D.mean <- D.var %*% (crossprod(tau.part.B, sigmaV.inv) %*% 
-                               colSums(tau.part.A))
-        D.draw <- mvrnorm(mu = D.mean, Sigma = D.var)
-        # update the mean: D - theta * D
-        D.mu <- tau.part.B %*% D.draw
-        mu.ss[(d+1):(2*d)] <- D.mu
-        # update alpha.draws.tau.demean
-        alpha.draws.tau.demean <- t(t(alpha.draws.tau) - D.draw)
-      }
+            tau_part_A = alpha_draws_tau[1:length_non_causal, :]
+                         - alpha_draws_tau[:length_non_causal-1, :].dot(Theta_draw.T)
+            tau_part_B = np.eye(d) - Theta_draw
+            D_var = la.inv((length_non_causal-1)*tau_part_B.T.dot(sigmaV_inv).dot(tau_part_B)
+                    + np.eye(d))
+            D_mean = D_var.dot((tau_part_B.T.dot(sigmaV_inv)).dot(tau_part_A.sum(axis=1).reshape(-1, 1)))  #it's wrong
+            D_draw = mvrnorm(mu = D_mean, Sigma = D_var)
+            # update the mean: D - theta * D
+            D_mu = tau_part_B.dot(D_draw)
+            mu_ss[d:2*d] = D_mu
+            # update alpha_draws_tau_demean
+            alpha_draws_tau_demean = (alpha_draws_tau.T - D_draw).T
       
       ## ---------------------------------------- ##
       ## Step 4: update sigmaU, sigmaV, sigmaW
       # parameter in sigmaU
-      PhiU <- crossprod(alpha.draws[2:length.non.causal, 1:d] - 
-                          alpha.draws[1:(length.non.causal-1), 1:d] - 
-                          alpha.draws[1:(length.non.causal-1), (d+1):(d*2)])
-      PhiU <- matrix(PhiU, d, d)
+        PhiU_value = alpha_draws[1:length_non_causal, :d]
+                     - alpha_draws[:length_non_causal-1, :d] - 
+                     - alpha_draws[:length_non_causal-1, d:d*2]
+
+        PhiU = PhiU_value.T.dot(PhiU_value)
+        # PhiU = matrix(PhiU, d, d)
       # parameter in sigmaV
-      if (stationary == TRUE) {
-        PhiV <- crossprod(alpha.draws.tau.demean[2:length.non.causal, ] -
-                            alpha.draws.tau.demean[1:(length.non.causal-1), ] %*%
-                            t(Theta.draw))
-      } else {
-        PhiV <- crossprod(alpha.draws[2:length.non.causal, (d+1):(2*d)] -
-                            alpha.draws[1:(length.non.causal-1), (d+1):(2*d)])
-      }
-      PhiV <- matrix(PhiV, d, d)
+        if stationary:
+            PhiV_value = alpha_draws_tau_demean[1:length_non_causal, :]
+                         - alpha_draws_tau_demean[:length_non_causal-1, :].dot(Theta_draw.T)
+            PhiV = PhiV_value.T.dot(PhiV_value)
+        else:
+            PhiV = crossprod()
+            PhiV_value = alpha_draws[1:length_non_causal, d:2*d]
+                         - alpha_draws[:length_non_causal-1, d:2*d]
+            PhiV = PhiV_value.T.dot(PhiV_value)
+        # PhiV = matrix(PhiV, d, d)
       # parameter in sigmaW
-      bind.W <- NULL
-      for (dims in 1:d) {
-        bind.W <- cbind(bind.W, rowSums(
-          cbind(alpha.draws[2:length.non.causal, seq(d*2+dims, n, by=d)],
-                alpha.draws[1:(length.non.causal-1), n-d+dims])))
-      }
-      PhiW <- crossprod(bind.W)
-      PhiW <- matrix(PhiW, d, d)
-      scale.U <- PhiU + (d+1)*k1^2*diag(d)
-      scale.V <- PhiV + (d+1)*k2^2*diag(d)
-      scale.W <- PhiW + (d+1)*k3^2*diag(d)
+        bind_W = NULL
+        for dims in range(d):
+            bind_W_tmp = np.stack(alpha_draws[1:length_non_causal, np.arange(d*2+dims, n, d)],
+                                  alpha_draws[:length_non_causal-1, n-d+dims])
+            bind_W = np.stack(bind_W, bind_W_tmp.sum(axis=0))
+
+        PhiW = bind_W.T.dot(bind_W)
+      # PhiW = matrix(PhiW, d, d)
+        scale_U = PhiU + (d+1)*k1**2*np.eye(d)
+        scale_V = PhiV + (d+1)*k2**2*np.eye(d)
+        scale_W = PhiW + (d+1)*k3**2*np.eye(d)
       # sample sigmaU, sigmaV, sigma W from their posteriors
-      if (graph == FALSE) {
-        sigmaU.draws <- solve(rWishart(1, length.non.causal+d-1, scale.U)[,,1])
-        sigmaV.inv <- rWishart(1, length.non.causal+d-1, scale.V)[,,1]
-        sigmaV.draws <- solve(sigmaV.inv)
-        sigmaW.draws <- solve(rWishart(1, length.non.causal+d-1, scale.W)[,,1])
-      } else {
-        sigmaU.draws <- solve(rgwish(adj.g = graph.structure, 
-                                     b = length.non.causal+d-1, D = scale.U)[,,1])
-        sigmaV.inv <- rgwish(adj.g = graph.structure, 
-                             b = length.non.causal+d-1, D = scale.V)[,,1]
-        sigmaV.draws <- solve(sigmaV.inv)
-        sigmaW.draws <- solve(rgwish(adj.g = graph.structure, 
-                                     b = length.non.causal+d-1, D = scale.W)[,,1])
-      }
-      Q <- bdiag(sigmaU.draws, sigmaV.draws, sigmaW.draws)
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if not graph:
+            sigmaU_draws = solve(rWishart(1, length_non_causal+d-1, scale_U)[,,1])
+            sigmaV_inv = rWishart(1, length_non_causal+d-1, scale_V)[,,1]
+            sigmaV_draws = solve(sigmaV_inv)
+            sigmaW_draws = solve(rWishart(1, length_non_causal+d-1, scale_W)[,,1])
+        else:
+            sigmaU_draws = solve(rgwish(adj.g = graph.structure, 
+                                         b = length_non_causal+d-1, D = scale_U)[,,1])
+            sigmaV_inv = rgwish(adj.g = graph.structure, 
+                                 b = length_non_causal+d-1, D = scale_V)[,,1]
+            sigmaV_draws = solve(sigmaV_inv)
+            sigmaW_draws = solve(rgwish(adj.g = graph.structure, 
+                                     b = length_non_causal+d-1, D = scale_W)[,,1])
+        
+        Q = sla.block_diag(sigmaU_draws, sigmaV_draws, sigmaW_draws)
       
       ## ---------------------------------------- ##
-      ## Step 5: update sigma.hat
-      res <- (test.data - alpha.draws %*% z)[1:length.non.causal, ]
-      if (graph == FALSE) {
-        D.sigma <- matrix(crossprod(res) + B, d, d)
-        sigma.hat.inv <- rWishart(1, delta+length.non.causal, D.sigma)[,,1]
-        sigma.hat <- solve(sigma.hat.inv)
-      } else {
-        D.sigma <- matrix(crossprod(res) + B, d, d)
-        sigma.hat.inv <- rgwish(n=1, adj.g = graph.structure, 
-                                b = (delta+length.non.causal), D = D.sigma)[,,1]
-        sigma.hat <- solve(sigma.hat.inv)
-      }
+      ## Step 5: update sigma_hat
+        res = (test_data - alpha_draws.dot(z))[:length_non_causal, :]
+        if not graph:
+            D_sigma = res.T.dot(res) + B
+            sigma_hat_inv = rWishart(1, delta+length_non_causal, D_sigma)[,,1]
+            sigma_hat = solve(sigma_hat_inv)
+        else:
+            D_sigma = res.T.dot(res) + B
+            sigma_hat_inv = rgwish(n=1, adj.g = graph.structure, 
+                                    b = (delta+length_non_causal), D = D_sigma)[,,1]
+            sigma_hat = solve(sigma_hat_inv)
       
       ## ---------------------------------------- ##
       ## Step 6: estimating dataset using predicted value
-      prediction.sample[, , iter] <- as.matrix(alpha.draws %*% z) + 
-        mvrnorm(T, mu = rep(0, d), sigma.hat)
+        prediction_sample[:, :, itery] = alpha_draws.dot(z) + mvrnorm(T, mu = rep(0, d), sigma_hat)
       ## ---------------------------------------- ##
       ## Step 7: collect sample draws
-      mu.sample[, , iter] <- matrix(alpha.draws, length, d) 
-      if (stationary == T) {
-        Theta.sample[, , iter] <- Theta.draw
-        D.sample[, iter] <- D.draw
-      }
-      sigma.sample[, , iter] <- sigma.hat
-      sigma.U.sample[, , iter] <- sigmaU.draws
-      sigma.V.sample[, , iter] <- sigmaV.draws
-      sigma.W.sample[, , iter] <- sigmaW.draws
-    }
+        mu_sample[:, :, itery] = alpha_draws
+        if stationary:
+            Theta_sample[:, :, iter] = Theta_draw
+            D_sample[:, iter] = D_draw
+        sigma_sample[:, :, iter] = sigma_hat
+        sigma_U_sample[:, :, iter] = sigmaU_draws
+        sigma_V_sample[:, :, iter] = sigmaV_draws
+        sigma_W_sample[:, :, iter] = sigmaW_draws
     # return result
-    if (stationary == T) {
-      list(prediction.sample = prediction.sample, mu.sample = mu.sample,
-           Theta.sample = Theta.sample, D.sample = D.sample, 
-           sigma.sample = sigma.sample, sigma.U.sample = sigma.U.sample,
-           sigma.V.sample = sigma.V.sample, sigma.W.sample = sigma.W.sample,
-           a.last.sample = a.last.sample, P.last.sample = P.last.sample,
-           z = z, R = R, trans = trans)
-    } else {
-      list(prediction.sample = prediction.sample, mu.sample = mu.sample,
-           sigma.sample = sigma.sample, sigma.U.sample = sigma.U.sample,
-           sigma.V.sample = sigma.V.sample, sigma.W.sample = sigma.W.sample,
-           a.last.sample = a.last.sample, P.last.sample = P.last.sample,
-           z = z, R = R, trans = trans)
-    }
-}
+
+    if stationary:
+        return_dict  = {"prediction sample": prediction_sample, 
+                        "mu sample": mu_sample,
+                        "Theta sample": Theta_sample, 
+                        "D sample": D_sample, 
+                        "sigma sample": sigma_sample, 
+                        "sigma U sample": sigma_U_sample,
+                        "sigma V sample": sigma_V_sample, 
+                        "sigma W sample": sigma_W_sample,
+                        "a last sample": a_last_sample, 
+                        "P last sample": P_last_sample,
+                        "z": z, "R": R, "trans": trans}
+    else:
+        return_dict  = {"prediction sample": prediction_sample, 
+                        "mu sample": mu_sample,
+                        "sigma sample": sigma_sample, 
+                        "sigma U sample": sigma_U_sample,
+                        "sigma V sample": sigma_V_sample, 
+                        "sigma W sample": sigma_W_sample,
+                        "a last sample": a_last_sample, 
+                        "P last sample": P_last_sample,
+                        "z": z, "R": R, "trans": trans}
+
+    return return_dict
