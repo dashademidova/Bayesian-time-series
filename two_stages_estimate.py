@@ -21,7 +21,7 @@ def two_stage_estimation(test_data, cntl_index, cntl_data,
 
     if graph:
         graph_structure = np.ones((d, d))
-    elif graph_structure == False:                  #don't know
+    elif not graph_structure:                  
         print("Graph structure must provde!")
         exit()
   
@@ -41,8 +41,8 @@ def two_stage_estimation(test_data, cntl_index, cntl_data,
                                 misspecification=misspecification, 
                                 plot_title = plot_title)
   
-    cntl_term = selection.cntl_term
-    EMVS_estimator = selection.beta_hat
+    cntl_term = selection["cntl term"]
+    EMVS_estimator = selection["beta hat"]
   
       ########################################################
       ####################### Stage 2 ########################
@@ -60,10 +60,11 @@ def two_stage_estimation(test_data, cntl_index, cntl_data,
                           num_cores=num_cores)
   
   # collect result
-    mcmc_output = model_estimates.mcmc_output
-    threshold = model_estimates.threshold
-    ks_test_cntl = model_estimates.ks_test_cntl
+    mcmc_output = model_estimates["mcmc output"]
+    threshold = model_estimates["threshold"]
+    ks_test_cntl = model_estimates["ks test cntl"]
   
   
   # return beta_hat,       mcmc_output, ks_test_cntl, threshold
-    return EMVS_estimator, mcmc_output, ks_test_cntl, threshold
+    return {"beta hut": EMVS_estimator, "mcmc output": mcmc_output, 
+            "ks test cntl": ks_test_cntl, "threshold": threshold}

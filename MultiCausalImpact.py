@@ -180,6 +180,6 @@ def MultiCausalImpact(test_data, causal_period, cntl_term, seed=1, nseasons=12,
         stack.cntl.culmulate.trend[t, dd, ],
         alternative = "less")$statistic
   
-  print("Done! \n")
+    print("Done! \n")
   # return result
-  return {"mcmc output": mcmc_model_output, "threshold": threshold, "ks test cntl": ks_test_cntl}
+    return {"mcmc output": mcmc_model_output, "threshold": threshold, "ks test cntl": ks_test_cntl}
