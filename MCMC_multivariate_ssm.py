@@ -36,9 +36,14 @@ import scipy
 import scipy.stats
 from scipy.stats import wishart
 import scipy.linalg as sla
+from statsmodels.tsa.api import VAR
+
+def chol2inv(x):
+    inv_local = np.linalg.inv(np.triu(x))
+    return inv_local.dot(inv_local.T)
 
 def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000, 
-                          burnin=100, stationary=True, graph=False, graph_structureNone):
+                          burnin=100, stationary=True, graph=False, graph_structure=None):
 
     
     ############## load functions ###############
@@ -54,7 +59,7 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     
     ############### initialize parameters #################
     # initialize z
-    circle = np.min(nseasons, length)
+    circle = np.min((nseasons, length))
     n = (circle+1)*d
     z = np.zeros((n, d))
     z[:d, :] = np.eye(d)
@@ -76,8 +81,7 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     delta = d+1 # prior for sigma
     B = np.eye(d) # prior for sigma
     # give right parameters t0 wishart
-    sigma_hat_inv = wishart(adj.g = graph.structure, b = d+1, 
-                            D = 0.1^2 * d * np.eye(d))[,,1]
+    sigma_hat_inv = wishart(df=d+1, scale=np.eye(d)/.1**2/d).rvs() * graph_structure
 
     # what's happening here
     sigma_hat = chol2inv(sigma_hat_inv)
@@ -90,10 +94,8 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     # take initial variance of tau from the data
     if stationary:
         # find python library with autoregressive models
-        data_yw = ar.yw(as.matrix(test_data[causal.period, ]), 
-                       aic = FALSE, order.max = 1,
-                       demean = T, intercept = T)
-        data_phi = np.hstack(data.yw$ar).reshape(d, d)
+        var = VAR(test_data[causal_period, :])
+        data_phi = var.fit(maxlags=1, ic=None, trend="nc").params
         trans[d:2*d, d:2*d] = data_phi
     else:
         trans[d:2*d, d:2*d] = np.eye(d)
@@ -102,7 +104,7 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     seasonal[0, :] = -1
     seasonal[1:circle-1, :circle-2] = np.eye(circle-2)
     for dims in range(d):
-        trans[np.arange(2*d+dims, n, d), np.arange(2*d+dims, n, d)] = seasonal
+        trans[2*d+dims: n: d, 2*d+dims: n: d] = seasonal
     
     # initialize R 
     R = np.zeros((n, d*3))
@@ -112,18 +114,15 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     k1, k2, k3 = 0.1, 0.1, 0.1
     # what's happening here
     if not graph:
-        sigmaU = chol2inv(rWishart(1, d+1, k1^2 * d * np.eye(d))[,,1])
-        sigmaV_inv = rWishart(1, d+1, k2^2 * d * np.eye(d))[,,1]
+        sigmaU = chol2inv(wishart(d, k1**2*d*np.eye(d)).rvs())
+        sigmaV_inv = wishart(d, k2**2*d*np.eye(d)).rvs()
         sigmaV = chol2inv(sigmaV_inv)
-        sigmaW = chol2inv(rWishart(1, d+1, k3^2 * d * np.eye(d))[,,1])
+        sigmaW = chol2inv(wishart(d, k3**2*d*np.eye(d)).rvs())
     else:
-        sigmaU = chol2inv(rgwish(adj.g = graph.structure,
-                                b = d+1, D = k1^2 * d * np.eye(d))[,,1])
-        sigmaV_inv = rgwish(adj.g = graph.structure,
-                           b = d+1, D = k2^2 * d * np.eye(d))[,,1]
+        sigmaU = chol2inv(wishart(df=d+1, scale=np.eye(d)/k1**2/d).rvs() * graph_structure)
+        sigmaV_inv = wishart(df=d+1, scale=np.eye(d)/k1**2/d).rvs() * graph_structure
         sigmaV = chol2inv(sigmaV_inv)
-        sigmaW = chol2inv(rgwish(adj.g = graph.structure,
-                                b = d+1, D = k3^2 * d * np.eye(d))[,,1])
+        sigmaW = chol2inv(wishart(df=d+1, scale=np.eye(d)/k1**2/d).rvs() * graph_structure)
 
     Q = sla.block_diag(sigmaU, sigmaV, sigmaW)
     
@@ -144,7 +143,7 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
     if stationary:
         Theta_sample = np.empty((d, d, iterloop))
         D_sample = np.zeros((d, iterloop))
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! I stop here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     # pb  = txtProgressBar(1, iterloop, style=3)    # report progress
     print("\nStarting MCMC sampling: \n")     # report progress
     ##################### Begin MCMC Sampling #######################
@@ -159,25 +158,23 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
       # simulate w.hat, y.hat, alpha.hat for Koopman's filter (2002)
         alpha_plus = np.zeros((length, n))
         for t in range(length):
-            eta = mvrnorm(1, mu = rep(0, 3*d), Q)
+            eta = multivariate_normal(mean=np.zeros(3*d), cov=Q, seed=3).rvs()
             if t == 0:
                 alpha_plus[t, :] = mu_ss + trans.dot(alpha) + R.dot(eta)
-
             else:
                 alpha_plus[t, :] = mu_ss + trans.dot(alpha_plus[t-1, :]) + R.dot(eta)
 
-        test_est_plus = alpha_plus.dot(z) + mvrnorm(n = length, mu = rep(0, d), Sigma = sigma_hat)
+        test_est_plus = alpha_plus.dot(z) + multivariate_normal(mean=np.zeros(d), cov=sigma_hat, seed=3).rvs(size=length)
         test_est_star = test_data - test_est_plus 
       # Estimate alpha parameters
-        sample_alpha_draws = koopmanfilter(n, test_est_star, trans, z, aStar, 2*P,
-                                           2*sigma_hat, 2*Q, R, causal_period)
+        sample_alpha_draws = koopmanfilter(n, test_est_star, trans, z, aStar, 2*P, 2*sigma_hat, 2*Q, R, causal_period)
         alpha_star_hat = sample_alpha_draws["alpha sample"]
         alpha_draws = alpha_star_hat + alpha_plus
       
       # collect a.last and P.last, 
       # use them for starting point of koopman filter for causal period dataset
-        a_last_sample[:, iter] = sample_alpha_draws["a last"]
-        P_last_sample[:, :, iter] = sample_alpha_draws["P last"]
+        a_last_sample[:, itery] = sample_alpha_draws["a last"]
+        P_last_sample[:, :, itery] = sample_alpha_draws["P last"]
       
       ## ---------------------------------------- ##
       ## Step 2: make stationary restriction
@@ -209,50 +206,47 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
       ## ---------------------------------------- ##
       ## Step 4: update sigmaU, sigmaV, sigmaW
       # parameter in sigmaU
-        PhiU_value = alpha_draws[1:length_non_causal, :d]
-                     - alpha_draws[:length_non_causal-1, :d] - 
+        PhiU_value = alpha_draws[1:length_non_causal, :d] \
+                     - alpha_draws[:length_non_causal-1, :d] - \
                      - alpha_draws[:length_non_causal-1, d:d*2]
 
         PhiU = PhiU_value.T.dot(PhiU_value)
         # PhiU = matrix(PhiU, d, d)
       # parameter in sigmaV
         if stationary:
-            PhiV_value = alpha_draws_tau_demean[1:length_non_causal, :]
+            PhiV_value = alpha_draws_tau_demean[1:length_non_causal, :] \
                          - alpha_draws_tau_demean[:length_non_causal-1, :].dot(Theta_draw.T)
             PhiV = PhiV_value.T.dot(PhiV_value)
         else:
-            PhiV = crossprod()
-            PhiV_value = alpha_draws[1:length_non_causal, d:2*d]
+            PhiV_value = alpha_draws[1:length_non_causal, d:2*d] \
                          - alpha_draws[:length_non_causal-1, d:2*d]
             PhiV = PhiV_value.T.dot(PhiV_value)
         # PhiV = matrix(PhiV, d, d)
       # parameter in sigmaW
-        bind_W = NULL
+        bind_W = np.zeros((79, 0))
         for dims in range(d):
-            bind_W_tmp = np.stack(alpha_draws[1:length_non_causal, np.arange(d*2+dims, n, d)],
-                                  alpha_draws[:length_non_causal-1, n-d+dims])
-            bind_W = np.stack(bind_W, bind_W_tmp.sum(axis=0))
+            bind_W_tmp = np.hstack((alpha_draws[1:length_non_causal, d*2+dims:n:d],
+                                  alpha_draws[:length_non_causal-1, n-d+dims, None]))
+            bind_W = np.hstack((bind_W, bind_W_tmp.sum(axis=1).reshape(-1, 1)))
 
         PhiW = bind_W.T.dot(bind_W)
-      # PhiW = matrix(PhiW, d, d)
+
         scale_U = PhiU + (d+1)*k1**2*np.eye(d)
         scale_V = PhiV + (d+1)*k2**2*np.eye(d)
         scale_W = PhiW + (d+1)*k3**2*np.eye(d)
+
+      # start from here
       # sample sigmaU, sigmaV, sigma W from their posteriors
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         if not graph:
-            sigmaU_draws = solve(rWishart(1, length_non_causal+d-1, scale_U)[,,1])
-            sigmaV_inv = rWishart(1, length_non_causal+d-1, scale_V)[,,1]
-            sigmaV_draws = solve(sigmaV_inv)
-            sigmaW_draws = solve(rWishart(1, length_non_causal+d-1, scale_W)[,,1])
+            sigmaU_draws = la.inv(wishart(length_non_causal+d-1, scale_U).rvs())
+            sigmaV_inv = wishart(length_non_causal+d-1, scale_V).rvs()
+            sigmaV_draws = la.inv(sigmaV_inv)
+            sigmaW_draws = la.inv(wishart(length_non_causal+d-1, scale_W).rvs())
         else:
-            sigmaU_draws = solve(rgwish(adj.g = graph.structure, 
-                                         b = length_non_causal+d-1, D = scale_U)[,,1])
-            sigmaV_inv = rgwish(adj.g = graph.structure, 
-                                 b = length_non_causal+d-1, D = scale_V)[,,1]
-            sigmaV_draws = solve(sigmaV_inv)
-            sigmaW_draws = solve(rgwish(adj.g = graph.structure, 
-                                     b = length_non_causal+d-1, D = scale_W)[,,1])
+            sigmaU_draws = la.inv(wishart(length_non_causal+d-1, scale_U).rvs() * graph_structure)
+            sigmaV_inv = wishart(length_non_causal+d-1, scale_V).rvs() * graph_structure
+            sigmaV_draws = la.inv(sigmaV_inv)
+            sigmaW_draws = la.inv(wishart(length_non_causal+d-1, scale_U).rvs() * graph_structure)
         
         Q = sla.block_diag(sigmaU_draws, sigmaV_draws, sigmaW_draws)
       
@@ -261,27 +255,26 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
         res = (test_data - alpha_draws.dot(z))[:length_non_causal, :]
         if not graph:
             D_sigma = res.T.dot(res) + B
-            sigma_hat_inv = rWishart(1, delta+length_non_causal, D_sigma)[,,1]
-            sigma_hat = solve(sigma_hat_inv)
+            sigma_hat_inv = wishart(delta+length_non_causal, D_sigma).rvs()
+            sigma_hat = la.inv(sigma_hat_inv)
         else:
             D_sigma = res.T.dot(res) + B
-            sigma_hat_inv = rgwish(n=1, adj.g = graph.structure, 
-                                    b = (delta+length_non_causal), D = D_sigma)[,,1]
-            sigma_hat = solve(sigma_hat_inv)
+            sigma_hat_inv = wishart(delta+length_non_causal, D_sigma).rvs() * graph_structure
+            sigma_hat = la.inv(sigma_hat_inv)
       
       ## ---------------------------------------- ##
       ## Step 6: estimating dataset using predicted value
-        prediction_sample[:, :, itery] = alpha_draws.dot(z) + mvrnorm(T, mu = rep(0, d), sigma_hat)
+        prediction_sample[:, :, itery] = alpha_draws.dot(z) + multivariate_normal(mean=np.zeros(d), sigma_hat).rvs(size=T)
       ## ---------------------------------------- ##
       ## Step 7: collect sample draws
         mu_sample[:, :, itery] = alpha_draws
         if stationary:
-            Theta_sample[:, :, iter] = Theta_draw
-            D_sample[:, iter] = D_draw
-        sigma_sample[:, :, iter] = sigma_hat
-        sigma_U_sample[:, :, iter] = sigmaU_draws
-        sigma_V_sample[:, :, iter] = sigmaV_draws
-        sigma_W_sample[:, :, iter] = sigmaW_draws
+            Theta_sample[:, :, itery] = Theta_draw
+            D_sample[:, itery] = D_draw
+        sigma_sample[:, :, itery] = sigma_hat
+        sigma_U_sample[:, :, itery] = sigmaU_draws
+        sigma_V_sample[:, :, itery] = sigmaV_draws
+        sigma_W_sample[:, :, itery] = sigmaW_draws
     # return result
 
     if stationary:
