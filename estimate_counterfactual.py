@@ -65,9 +65,9 @@ def estimate_counterfactual(test_data, cntl_index, cntl_data,
     index = 1
 
     for i in range(test_data.shape[1]):
-        cntl_term[:, i] = cntl_data[:, (index-1):(index+9)] @ beta_hat[(index-1):(index+9)]
-        index = index + 10
+        cntl_term[:, i] = cntl_data[:, index-1:index+cntl_index-1] @ beta_hat[index-1:index+cntl_index-1]
+        index = index + cntl_index
   
     
-    return {'cntl_term' : cntl_term, 'beta_hat' : beta_hat}
+    return {'cntl term' : cntl_term, 'beta hat' : beta_hat}
 

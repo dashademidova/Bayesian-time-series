@@ -32,7 +32,6 @@
 #'        matrix
 import numpy as np
 import numpy.linalg as la
-import pandas as pd
 import scipy
 import scipy.stats
 from scipy.stats import wishart, multivariate_normal
@@ -49,18 +48,16 @@ def chol2inv(x):
     return inv_local.dot(inv_local.T)
 
 def check_positive(A):
-    if la.slogdet(A)[0] < 0:
-        return sqrtm(A.dot(A.T))
-    else:
-        return A
+    u, s, _ = la.svd(A)
+    return u.dot(np.diag(s).dot(u.T))
 
 def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000, burnin=100, 
                           stationary=True, graph=False, graph_structure=None, seed=3):
 
     
     ############## load functions ###############
-    # if stationary:
-    #     import stationaryRestrict
+    if stationary:
+        from stationaryRestrict import stationaryRestrict
     
     ############### organize dataset #################
     length, d = test_data.shape
@@ -187,13 +184,12 @@ def MCMC_multivariate_ssm(test_data, causal_period, nseasons=12, iterloop = 1000
         ## Step 2: make stationary restriction
         if stationary:
             alpha_draws_tau = alpha_draws[:length_non_causal, d:d*2]
-            # if itery == 0:
-            #     alpha_draws_tau_demean = alpha_draws_tau
-            #     Theta_draw = stationaryRestrict(alpha_draws_tau_demean, sigmaV, sigmaV_inv)
-            # else:
-            #     alpha_draws_tau_demean = (alpha_draws_tau.T - D_draw).T
-            #     Theta_draw = stationaryRestrict(alpha_draws_tau_demean, sigmaV_draws, sigmaV_inv)
-            Theta_draw = pd.read_csv(path+"Theta_draw.csv").values
+            if itery == 0:
+                alpha_draws_tau_demean = alpha_draws_tau
+                Theta_draw = stationaryRestrict(alpha_draws_tau_demean, sigmaV, sigmaV_inv)
+            else:
+                alpha_draws_tau_demean = (alpha_draws_tau.T - D_draw.reshape(-1, 1)).T
+                Theta_draw = stationaryRestrict(alpha_draws_tau_demean, sigmaV_draws, sigmaV_inv)
             trans[d:2*d, d:2*d] = Theta_draw
         
             ## ---------------------------------------- ##

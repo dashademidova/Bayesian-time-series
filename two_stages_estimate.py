@@ -1,4 +1,5 @@
-import numpy as np
+from estimate_counterfactual import estimate_counterfactual 
+from MultiCausalImpact import MultiCausalImpact
 
 def two_stage_estimation(test_data, cntl_index, cntl_data, 
                          graph=False, graph_structure=False, 
@@ -8,9 +9,8 @@ def two_stage_estimation(test_data, cntl_index, cntl_data,
                          mcmc_iterloop=10000, burnin=2000, 
                          stationary=True, 
                          misspecification=False,
-                         num_sim_data=30, num_cores=1,
+                         num_sim_data=30,
                          seed=1, probs=0.95,
-                         plot_EMVS_figure=False,
                          plot_title=None):
   
     T, d = test_data.shape
@@ -25,12 +25,12 @@ def two_stage_estimation(test_data, cntl_index, cntl_data,
         print("Graph structure must provde!")
         exit()
   
-      ########################################################
-      ####################### Stage 1 ########################
-      ########################################################
-      ## Stage 1:
-      # EMVS for estimating beta
-      # for EMVS, s = 1; for DAEMVS, 0 <= s <= 1
+    ########################################################
+    ####################### Stage 1 ########################
+    ########################################################
+    ## Stage 1:
+    # EMVS for estimating beta
+    # for EMVS, s = 1; for DAEMVS, 0 <= s <= 1
     selection = \
         estimate_counterfactual(test_data=test_data, cntl_index=cntl_index, 
                                 cntl_data=cntl_data, graph_structure=graph_structure, 
@@ -44,12 +44,12 @@ def two_stage_estimation(test_data, cntl_index, cntl_data,
     cntl_term = selection["cntl term"]
     EMVS_estimator = selection["beta hat"]
   
-      ########################################################
-      ####################### Stage 2 ########################
-      ########################################################
-      ## Stage 2:
-      # MCMC for time varying parameters and covariance and variance matrices
-      # Fit into timeseries model
+    ########################################################
+    ####################### Stage 2 ########################
+    ########################################################
+    ## Stage 2:
+    # MCMC for time varying parameters and covariance and variance matrices
+    # Fit into timeseries model
     model_estimates = \
         MultiCausalImpact(test_data=test_data, causal_period=causal_period, 
                           cntl_term=cntl_term, seed=seed, nseasons=circle, 

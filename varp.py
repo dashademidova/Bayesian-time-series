@@ -34,7 +34,7 @@ def par2pre_varp(phi):
     q = la.inv(sqrtm(v)).dot(phi.dot(sqrtm(U)))
     pre[:np.int32(binom(m + 1,2))] = V2LDL(v)
     delta, _ = la.slogdet(q)
-    s = 2 * la.inv(np.eye(m) + np.diag(np.r_[delta, np.ones(m - 1)])).dot(q) - np.eye(m)
+    s = 2 * la.inv(np.eye(m) + np.diag(np.r_[delta, np.ones(m - 1)]).dot(q)) - np.eye(m)
     pre[np.int32(binom(m + 1,2)):m**2] = s.T[np.triu_indices(m, k=1)]
     return {"pre": pre, "delta": delta, "U": U}
 
