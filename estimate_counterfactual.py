@@ -7,8 +7,7 @@ def estimate_counterfactual(test_data, cntl_index, cntl_data,
                             circle = 7, s = 0.1, iteration = 50,
                             v0_value = np.linspace(1e-6, 0.02, 5),
                             stationary = True, 
-                            misspecification = False,
-                            plot_figure = False, plot_title = None):
+                            misspecification = False):
     print('Starting Bayesian EM variable selection...')
     
     iteration = iteration

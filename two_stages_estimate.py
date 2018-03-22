@@ -37,9 +37,8 @@ def two_stage_estimation(test_data, cntl_index, cntl_data,
                                 circle=circle, causal_period=causal_period, s=s, 
                                 iteration=emvs_iteration, 
                                 v0_value=v0_value,
-                                stationary=stationary, plot_figure = plot_EMVS_figure,
-                                misspecification=misspecification, 
-                                plot_title = plot_title)
+                                stationary=stationary,
+                                misspecification=misspecification)
   
     cntl_term = selection["cntl term"]
     EMVS_estimator = selection["beta hat"]
