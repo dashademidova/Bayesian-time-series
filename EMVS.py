@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[1]:
-
-
 import random
 import numpy as np
 import pandas as pd
@@ -25,9 +19,9 @@ BDgraph = importr('BDgraph')
 base = importr('base')
 stats = importr('stats')
 
-
-# In[7]:
-
+from koopmanfilter import koopmanfilter
+from kalmflter import kalmflter
+from MungeMatrix import MungeMatrix
 
 def EMVS(test, cntl_index, cntl, graph_structure, circle,
                  v0 = 0.1, s = 0.1, iteration = 50, stationary = True, 
