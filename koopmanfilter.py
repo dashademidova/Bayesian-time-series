@@ -1,7 +1,6 @@
 import numpy as np
 from kalmflter import kalmflter
 
-
 def koopmanfilter(n, y, trans, z, a_int, P_int, sigma, Q, R, causal_period=np.array(None), output_var_cov=False):
     
     """
@@ -77,6 +76,17 @@ def koopmanfilter(n, y, trans, z, a_int, P_int, sigma, Q, R, causal_period=np.ar
                 if causal_period.all() is not None and t == causal_period[0] - 1:
                     a_last = a
                     P_last = P 
+                    
+                    
+    # backward recursion to obtain draws of r and N
+    for t in range(T - 1, -1, -1):
+        if t in causal_period:
+            r[:, t] = r[:, t + 1] @ trans
+            N[:, :, t] = trans.T @ N[:, :, t + 1] @ trans
+        else:
+            r[:, t] = z @ np.linalg.inv(F_sample[:, :, t]) @ v_sample[t, :] + L_sample[t, :, :].T @ r[:, t + 1]
+            N[:, :, t] = (z @ np.linalg.inv(F_sample[:, :, t]) @ z.T 
+                          + L_sample[t, :, :].T @ N[:, :, t + 1] @ L_sample[t, :, :].T)
 
         # obtain draws of alpha
     alpha_sample[:, 0] = a_int + P_int @ r[:, 0]

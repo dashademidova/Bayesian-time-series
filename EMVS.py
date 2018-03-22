@@ -26,10 +26,12 @@ from MungeMatrix import MungeMatrix
 def EMVS(test, cntl_index, cntl, graph_structure, circle,
                  v0 = 0.1, s = 0.1, iteration = 50, stationary = True, 
                  misspecification = False):
+    #print('call EMVS', iteration)
     ##################### EMVS ########################
     # organize dataset
     length = test.shape[0]
     n = test.shape[1]  
+    
     dCntl = sum(cntl_index)
     cntl_input = cntl.copy()
 
@@ -256,11 +258,15 @@ def EMVS(test, cntl_index, cntl, graph_structure, circle,
             sigma_hat_inv = np.linalg.solve(sigma_hat, np.eye(sigma_hat.shape[0]))
 
 
-            #sigma.hat.inv[graph.structure == 0] <- 0 
-            if min(abs(np.linalg.eigvals(sigma_hat_inv))) <= 0:
-                sigma_hat_inv = MungeMatrix(sigma_hat_inv)
+            #sigma.hat.inv[graph.structure == 0] <- 0         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            #if np.linalg.eigvals(sigma_hat_inv) != NaN:
+            #    print(np.linalg.eigvals(sigma_hat_inv))
+            #else:
+            #    print('NaN')
+            #if min(abs(np.linalg.eigvals(sigma_hat_inv))) <= 0:
+            #    sigma_hat_inv = MungeMatrix(sigma_hat_inv)
 
-            sigma_hat = np.linalg.solve(sigma_hat_inv, np.eye(sigma_hat_inv.shape[0])) 
+            #sigma_hat = np.linalg.solve(sigma_hat_inv, np.eye(sigma_hat_inv.shape[0])) 
 
 
             # update Q
@@ -276,7 +282,7 @@ def EMVS(test, cntl_index, cntl, graph_structure, circle,
             sigma_u_hat_inv = np.linalg.solve(sigma_u_hat, np.eye(sigma_u_hat.shape[0]))
 
             # sigma.u.hat.inv[graph.structure == 0] <- 0
-            if min(abs(np.linalg.eigvals(sigma_u_hat_inv))) <= 0:
+            if min(abs(np.linalg.eigvals(sigma_u_hat_inv))) <= 0: #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 sigma_u_hat_inv = MungeMatrix(sigma_u_hat_inv)
 
 

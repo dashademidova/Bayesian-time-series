@@ -50,14 +50,14 @@ def two_stage_estimation(test_data, cntl_index, cntl_data,
     ## Stage 2:
     # MCMC for time varying parameters and covariance and variance matrices
     # Fit into timeseries model
+    
     model_estimates = \
         MultiCausalImpact(test_data=test_data, causal_period=causal_period, 
-                          cntl_term=cntl_term, seed=seed, nseasons=circle, 
-                          iterloop=iterloop, burnin=burnin, 
+                          cntl_term=cntl_term, seed_local=seed, nseasons=circle, 
+                          iterloop=mcmc_iterloop, burnin=burnin, 
                           stationary=stationary, graph=graph, 
                           graph_structure=graph_structure,
-                          num_sim_data=num_sim_data, probs=probs,
-                          num_cores=num_cores)
+                          num_sim_data=num_sim_data, probs=probs)
   
   # collect result
     mcmc_output = model_estimates["mcmc output"]

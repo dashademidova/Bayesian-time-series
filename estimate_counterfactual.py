@@ -10,7 +10,7 @@ def estimate_counterfactual(test_data, cntl_index, cntl_data,
                             misspecification = False):
     print('Starting Bayesian EM variable selection...')
     
-    nc = test_data.shape[1]*np.iint32(cntl_index[0])
+    nc = test_data.shape[1]*np.int32(cntl_index[0])
     iteration = iteration
     test_data_non_causal = test_data[np.delete(np.arange(test_data.shape[0]), causal_period-1),:]
     cntl_data_non_causal = cntl_data[np.delete(np.arange(cntl_data.shape[0]), causal_period-1),:]
@@ -42,7 +42,7 @@ def estimate_counterfactual(test_data, cntl_index, cntl_data,
     c = np.sqrt(np.divide(v1, v0_value))
     
     beta_threshold = np.sqrt( (np.log(np.divide(v0_value, v1)) + 
-                             2*np.log(np.divide(theta,(1-theta)) + 1e-10)) / (np.divide(1,v1)-np.divide(1,v0.value)))
+                             2*np.log(np.divide(theta,(1-theta)) + 1e-10)) / (np.divide(1,v1)-np.divide(1,v0_value)))
                            
     
     dCntl = np.sum(cntl_index)
@@ -53,7 +53,7 @@ def estimate_counterfactual(test_data, cntl_index, cntl_data,
     
     
     
-    beta_star = beta_threshold[len(v0_value)]
+    beta_star = beta_threshold[len(v0_value)-1]
     if len(v0_value) > 1:
         beta_hat = beta_v0[:, -1]
     else:
@@ -64,9 +64,11 @@ def estimate_counterfactual(test_data, cntl_index, cntl_data,
     cntl_term = np.empty((test_data.shape[0], test_data.shape[1]))
     index = 1
 
+    
     for i in range(test_data.shape[1]):
-        cntl_term[:, i] = cntl_data[:, index-1:index+cntl_index-1] @ beta_hat[index-1:index+cntl_index-1]
-        index = index + cntl_index
+        
+        cntl_term[:, i] = cntl_data[:, index-1:index+cntl_index[0]-1] @ beta_hat[index-1:index+cntl_index[0]-1]
+        index = index + cntl_index[0]
   
     
     return {'cntl term' : cntl_term, 'beta hat' : beta_hat}
