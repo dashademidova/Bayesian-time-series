@@ -35,8 +35,8 @@ def estimate_counterfactual(test_data, cntl_index, cntl_data,
                         iteration = iteration, stationary = stationary, 
                         misspecification = misspecification)
             
-            beta_v0[:,i] = emvs_result['beta'][:, iteration+1]
-            theta[i] = emvs_result['theta'][iteration]
+            beta_v0[:,i] = emvs_result['beta'][:, iteration]
+            theta[i] = emvs_result['theta'][iteration-1]
             v1[i] = emvs_result['v1']
             
     c = np.sqrt(np.divide(v1, v0_value))
