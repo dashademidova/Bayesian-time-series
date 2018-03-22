@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 
-def kalmflter(y, tnas, z, z, P, Q, R, missing=False):
+def kalmflter(y, tnas, z, a, P, sigma, Q, R, missing=False):
     
     """
     Kalman-filter for forward draws of alphas. 
@@ -18,29 +18,22 @@ def kalmflter(y, tnas, z, z, P, Q, R, missing=False):
         missing: Lets kalman-filter do data imputation if missing is true.
 
     Returns:
-        Updated a, updated P, updated alpha.
+        output_kalmflter: Updated a, updated P, updated alpha.
     """
-    output_kalmflter = []
     if missing == True:
-        a.update = trans @ a
-        P.update = trans @ P @ trans.T + R @ Q @ R.T
-        output_kalmflter.append(a.update)
-        output_kalmflter.append(P.update)
-        
-        return output_kalmflter
+        a_update = trans @ a
+        P_update = trans @ P @ trans.T + R @ Q @ R.T
+
+        return {"a": a_update, "P": P_update}
+
     else:
-        v = y - np.cross(z,a)
+        v = y - z.T @ a
         FF = z.T @ P @ z + sigma
-        if np.linalg.cond(np.asmatrix(ZZ)) < 1 / sys.float_info.epsilon:
+        if np.linalg.cond(FF) < 1 / sys.float_info.epsilon:
             FF = MungeMatrix(FF)
-        K = trans @ P @ z @ np.linalg.inv(np.asmatrix(ZZ))
+        K = trans @ P @ z @ np.linalg.inv(FF)
         L = trans - K @ z.T
-        a.update = trans @ a + K @ v
-        P.update = trans @ P @ L.T + R @ Q @ R.T
-        output_kalmflter.append(v)
-        output_kalmflter.append(FF)
-        output_kalmflter.append(L)
-        output_kalmflter.append(a.update)
-        output_kalmflter.append(P.update)
-        
-        return output_kalmflter
+        a_update = trans @ a + K @ v
+        P_update = trans @ P @ L.T + R @ Q @ R.T
+
+        return {"v": v, "FF": FF, "L": L, "a": a_update, "P": P_update}
