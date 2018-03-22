@@ -3,7 +3,7 @@ from MultiCausalImpact import MultiCausalImpact
 
 def two_stage_estimation(test_data, cntl_index, cntl_data, 
                          graph=False, graph_structure=False, 
-                         circle, causal_period, s=0.1,
+                         circle=12, causal_period=[], s=0.1,
                          emvs_iteration=50, 
                          v0_value=np.linspace(1e-6, 0.02, 5),
                          mcmc_iterloop=10000, burnin=2000, 
