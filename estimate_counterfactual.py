@@ -10,6 +10,7 @@ def estimate_counterfactual(test_data, cntl_index, cntl_data,
                             misspecification = False):
     print('Starting Bayesian EM variable selection...')
     
+    nc = test_data.shape[1]*np.iint32(cntl_index)
     iteration = iteration
     test_data_non_causal = test_data[np.delete(np.arange(test_data.shape[0]), causal_period-1),:]
     cntl_data_non_causal = cntl_data[np.delete(np.arange(cntl_data.shape[0]), causal_period-1),:]

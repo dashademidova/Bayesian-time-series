@@ -1,5 +1,6 @@
 from estimate_counterfactual import estimate_counterfactual 
 from MultiCausalImpact import MultiCausalImpact
+import numpy as np
 
 def two_stage_estimation(test_data, cntl_index, cntl_data, 
                          graph=False, graph_structure=False, 
