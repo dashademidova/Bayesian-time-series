@@ -1,22 +1,6 @@
-
-# coding: utf-8
-
-# In[ ]:
-
-
-# the order of input arguments is changed !!!!!!
-
-
-# In[2]:
-
-
 import numpy as np
 
 from EMVS import EMVS 
-
-
-# In[7]:
-
 
 def estimate_counterfactual(test_data, cntl_index, cntl_data, 
                             graph_structure, causal_period, 
