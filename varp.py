@@ -20,8 +20,8 @@ def V2LDL(v):
     pre = np.zeros(np.int32(binom(m+1, 2)))
     c = la.cholesky(v).T #la.cholesky() returns lower triangular, not upper triangular
     d = np.diagonal(c)
-    l = c.T / d
-    pre[:np.int32(binom(m, 2))] = l[np.tril_indices(m, k=-1)]
+    l = c / d.reshape(-1, 1)
+    pre[:np.int32(binom(m, 2))] = l[np.triu_indices(m, k=1)]
     pre[np.int32(binom(m, 2)):np.int32(binom(m+1, 2))] = np.log(d**2)
     return pre
 
@@ -35,7 +35,7 @@ def par2pre_varp(phi):
     pre[:np.int32(binom(m + 1,2))] = V2LDL(v)
     delta, _ = la.slogdet(q)
     s = 2 * la.inv(np.eye(m) + np.diag(np.r_[delta, np.ones(m - 1)])).dot(q) - np.eye(m)
-    pre[np.int32(binom(m + 1,2)):m**2] = s[np.tril_indices(m, k=-1)]
+    pre[np.int32(binom(m + 1,2)):m**2] = s.T[np.triu_indices(m, k=1)]
     return {"pre": pre, "delta": delta, "U": U}
 
 def VQ2par(v, q):
@@ -53,11 +53,11 @@ def pre2par_varp( pre, delta):
     v = np.zeros((m, m)) 
     q = v 
     l = np.eye(m)
-    l[np.tril_indices(m, k=-1)] = pre[:np.int32(binom(m, 2))]
+    l.T[np.triu_indices(m, k=1)] = pre[:np.int32(binom(m, 2))]
     d = np.diag(np.exp(pre[np.int32(binom(m, 2)):np.int32(binom(m + 1, 2))]))   #diag -> diagonal, lost +1
     v = l.dot(d).dot(l.T)
     s = np.zeros((m, m)) 
-    s[np.tril_indices(m, k=-1)] = pre[np.int32(binom(m + 1, 2)):m**2]
+    s.T[np.triu_indices(m, k=1)] = pre[np.int32(binom(m + 1, 2)):m**2]
     s = s - s.T
     q = np.diag(np.r_[delta, np.ones(m-1)]).dot(np.eye(m) - s).dot(la.inv(np.eye(m) + s))
     phi = VQ2par(v, q)
@@ -86,11 +86,11 @@ def varppre_lkhd(y, pre, delta, sigma, sigma_inv):
 def pre2VQ( pre, delta):
     m = np.int32(np.sqrt(pre.size))   
     l = np.eye(m)
-    l[np.tril_indices(m, k=-1)] = pre[:np.int32(binom(m, 2))]
+    l.T[np.triu_indices(m, k=1)] = pre[:np.int32(binom(m, 2))]
     d = np.diag(np.exp(pre[np.int32(binom(m, 2)):np.int32(binom(m + 1, 2))]))   #diag -> diagonal, lost +1
     v = l.dot(d).dot(l.T)
     s = np.zeros((m, m))
-    s[np.tril_indices(m, k=-1)] = pre[np.int32(binom(m + 1, 2)):m**2]
+    s.T[np.triu_indices(m, k=1)] = pre[np.int32(binom(m + 1, 2)):m**2]
     s = s - s.T
     q = np.diag(np.r_[delta, np.ones(m-1)]).dot(np.eye(m) - s).dot(la.inv(np.eye(m) + s))
     phi = VQ2par(v, q)

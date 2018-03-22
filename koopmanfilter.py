@@ -1,6 +1,7 @@
 import numpy as np
 from kalmflter import kalmflter
 
+
 def koopmanfilter(n, y, trans, z, a_int, P_int, sigma, Q, R, causal_period=np.array(None), output_var_cov=False):
     
     """
@@ -94,12 +95,12 @@ def koopmanfilter(n, y, trans, z, a_int, P_int, sigma, Q, R, causal_period=np.ar
 
     if output_var_cov == True:
         
-        return {"alpha_sample": alpha_sample, "a_sample": a_sample, "P_sample": P_sample, "P_cov_sample": P_cov_sample}
+        return {"alpha sample": alpha_sample, "a sample": a_sample, "P sample": P_sample, "P cov sample": P_cov_sample}
     else: 
     # return value
         if causal_period.all() is None:
             
-            return {"alpha_sample": alpha_sample}
+            return {"alpha sample": alpha_sample}
         else:
             
-            return {"alpha_sample": alpha_sample, "a_last": a_last, "P_last": P_last}
+            return {"alpha sample": alpha_sample, "a last": a_last, "P last": P_last}

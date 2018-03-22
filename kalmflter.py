@@ -1,7 +1,8 @@
 import numpy as np
 import sys
+from MungeMatrix import MungeMatrix
 
-def kalmflter(y, tnas, z, a, P, sigma, Q, R, missing=False):
+def kalmflter(y, trans, z, a, P, sigma, Q, R, missing=False):
     
     """
     Kalman-filter for forward draws of alphas. 
